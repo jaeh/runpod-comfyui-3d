@@ -15,7 +15,7 @@ import socket
 import traceback
 import logging
 
-from network_volume import (
+from src.network_volume import (
     is_network_volume_debug_enabled,
     run_network_volume_diagnostics,
 )
