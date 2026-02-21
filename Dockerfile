@@ -61,6 +61,9 @@ RUN if [ "$ENABLE_PYTORCH_UPGRADE" = "true" ]; then \
       uv pip install --force-reinstall torch torchvision torchaudio --index-url ${PYTORCH_INDEX_URL}; \
     fi
 
+# Install TRELLIS2 custom nodes via Comfy Manager
+RUN comfy-node-install ComfyUI-TRELLIS2 ComfyUI-GeometryPack
+
 # Change working directory to ComfyUI
 WORKDIR /comfyui
 
@@ -102,7 +105,27 @@ ARG MODEL_TYPE=flux1-dev-fp8
 WORKDIR /comfyui
 
 # Create necessary directories upfront
-RUN mkdir -p models/checkpoints models/vae models/unet models/clip models/text_encoders models/diffusion_models models/model_patches
+RUN mkdir -p models/checkpoints models/vae models/unet models/clip models/text_encoders models/diffusion_models models/model_patches models/trellis2/TRELLIS.2-4B/ckpts
+
+# Download TRELLIS.2-4B models (~16 GB total)
+RUN wget -q -O models/trellis2/TRELLIS.2-4B/ckpts/shape_enc_next_dc_f16c32_fp16.safetensors \
+      https://huggingface.co/microsoft/TRELLIS.2-4B/resolve/main/ckpts/shape_enc_next_dc_f16c32_fp16.safetensors && \
+    wget -q -O models/trellis2/TRELLIS.2-4B/ckpts/shape_dec_next_dc_f16c32_fp16.safetensors \
+      https://huggingface.co/microsoft/TRELLIS.2-4B/resolve/main/ckpts/shape_dec_next_dc_f16c32_fp16.safetensors && \
+    wget -q -O models/trellis2/TRELLIS.2-4B/ckpts/tex_enc_next_dc_f16c32_fp16.safetensors \
+      https://huggingface.co/microsoft/TRELLIS.2-4B/resolve/main/ckpts/tex_enc_next_dc_f16c32_fp16.safetensors && \
+    wget -q -O models/trellis2/TRELLIS.2-4B/ckpts/tex_dec_next_dc_f16c32_fp16.safetensors \
+      https://huggingface.co/microsoft/TRELLIS.2-4B/resolve/main/ckpts/tex_dec_next_dc_f16c32_fp16.safetensors && \
+    wget -q -O models/trellis2/TRELLIS.2-4B/ckpts/ss_flow_img_dit_1_3B_64_bf16.safetensors \
+      https://huggingface.co/microsoft/TRELLIS.2-4B/resolve/main/ckpts/ss_flow_img_dit_1_3B_64_bf16.safetensors && \
+    wget -q -O models/trellis2/TRELLIS.2-4B/ckpts/slat_flow_img2shape_dit_1_3B_512_bf16.safetensors \
+      https://huggingface.co/microsoft/TRELLIS.2-4B/resolve/main/ckpts/slat_flow_img2shape_dit_1_3B_512_bf16.safetensors && \
+    wget -q -O models/trellis2/TRELLIS.2-4B/ckpts/slat_flow_img2shape_dit_1_3B_1024_bf16.safetensors \
+      https://huggingface.co/microsoft/TRELLIS.2-4B/resolve/main/ckpts/slat_flow_img2shape_dit_1_3B_1024_bf16.safetensors && \
+    wget -q -O models/trellis2/TRELLIS.2-4B/ckpts/slat_flow_imgshape2tex_dit_1_3B_512_bf16.safetensors \
+      https://huggingface.co/microsoft/TRELLIS.2-4B/resolve/main/ckpts/slat_flow_imgshape2tex_dit_1_3B_512_bf16.safetensors && \
+    wget -q -O models/trellis2/TRELLIS.2-4B/ckpts/slat_flow_imgshape2tex_dit_1_3B_1024_bf16.safetensors \
+      https://huggingface.co/microsoft/TRELLIS.2-4B/resolve/main/ckpts/slat_flow_imgshape2tex_dit_1_3B_1024_bf16.safetensors
 
 # Download checkpoints/vae/unet/clip models to include in image based on model type
 RUN if [ "$MODEL_TYPE" = "sdxl" ]; then \
