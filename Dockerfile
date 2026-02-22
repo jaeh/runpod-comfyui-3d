@@ -62,7 +62,9 @@ RUN if [ "$ENABLE_PYTORCH_UPGRADE" = "true" ]; then \
     fi
 
 # Install TRELLIS2 custom nodes via Comfy Manager
-RUN comfy-node-install ComfyUI-TRELLIS2 ComfyUI-GeometryPack
+COPY scripts/comfy-node-install.sh /usr/local/bin/comfy-node-install
+RUN chmod +x /usr/local/bin/comfy-node-install && \
+    comfy-node-install ComfyUI-TRELLIS2 ComfyUI-GeometryPack
 
 # Change working directory to ComfyUI
 WORKDIR /comfyui
@@ -79,10 +81,6 @@ RUN uv pip install runpod requests websocket-client
 # Add application code and scripts
 ADD src/start.sh src/network_volume.py handler.py test_input.json ./
 RUN chmod +x /start.sh
-
-# Add script to install custom nodes
-COPY scripts/comfy-node-install.sh /usr/local/bin/comfy-node-install
-RUN chmod +x /usr/local/bin/comfy-node-install
 
 # Prevent pip from asking for confirmation during uninstall steps in custom nodes
 ENV PIP_NO_INPUT=1
