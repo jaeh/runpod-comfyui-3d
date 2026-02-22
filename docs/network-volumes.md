@@ -51,15 +51,15 @@ Models must be placed in the following structure on your network volume:
 
 ComfyUI only recognizes files with specific extensions when scanning model directories.
 
-| Model Type     | Supported Extensions                        |
-| -------------- | ------------------------------------------- |
+| Model Type     | Supported Extensions                           |
+| -------------- | ---------------------------------------------- |
 | Checkpoints    | `.safetensors`, `.ckpt`, `.pt`, `.pth`, `.bin` |
-| LoRAs          | `.safetensors`, `.pt`                       |
-| VAE            | `.safetensors`, `.pt`, `.bin`               |
-| CLIP           | `.safetensors`, `.pt`, `.bin`               |
-| ControlNet     | `.safetensors`, `.pt`, `.pth`, `.bin`       |
-| Embeddings     | `.safetensors`, `.pt`, `.bin`               |
-| Upscale Models | `.safetensors`, `.pt`, `.pth`               |
+| LoRAs          | `.safetensors`, `.pt`                          |
+| VAE            | `.safetensors`, `.pt`, `.bin`                  |
+| CLIP           | `.safetensors`, `.pt`, `.bin`                  |
+| ControlNet     | `.safetensors`, `.pt`, `.pth`, `.bin`          |
+| Embeddings     | `.safetensors`, `.pt`, `.bin`                  |
+| Upscale Models | `.safetensors`, `.pt`, `.pth`                  |
 
 Files with other extensions (for example `.txt`, `.zip`) are **ignored** by ComfyUI’s model discovery.
 
@@ -92,7 +92,6 @@ Enable this when:
 
 1. Go to your serverless **Endpoint → Manage → Edit**.
 2. Under **Environment Variables**, add:
-
    - `NETWORK_VOLUME_DEBUG=true`
 
 3. Save and wait for workers to restart (or scale to zero and back up).
@@ -143,5 +142,3 @@ Once you have resolved your issue, disable diagnostics to keep logs clean:
 - Set `NETWORK_VOLUME_DEBUG=false`
 
 This returns the worker to normal behavior without extra log noise.
-
-

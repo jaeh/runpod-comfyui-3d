@@ -110,6 +110,7 @@ For enhanced local development and end-to-end testing, you can start a local env
     # From the project root directory
     docker-compose up --build
     ```
+
     - The `--build` flag ensures the image is built locally using the current state of the code and `Dockerfile`.
     - This will start two containers: `comfyui` and `worker`.
 

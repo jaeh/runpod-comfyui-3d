@@ -23,7 +23,6 @@ This is the simplest method if the official images meet your needs.
 
 - Navigate to [`Serverless > Endpoints`](https://www.runpod.io/console/serverless/user/endpoints) and click on `New Endpoint`
 - In the dialog, configure:
-
   - Endpoint Name: `comfy` (or your preferred name)
   - Worker configuration: Select a GPU that can run the model included in your chosen image (see [GPU recommendations](#gpu-recommendations)).
   - Active Workers: `0` (Scale as needed based on expected load).
@@ -67,6 +66,7 @@ This method involves building your custom Docker image locally, pushing it to a 
     # Replace <your-image-name>:<tag> with your desired name and tag
     docker build --platform linux/amd64 -t <your-image-name>:<tag> .
     ```
+
     - **Crucially**, always include `--platform linux/amd64` for RunPod compatibility.
 3.  **Tag the image for your registry:** Replace `<your-registry-username>` and `<your-image-name>:<tag>` accordingly.
     ```bash

@@ -47,6 +47,15 @@ if os.environ.get("WEBSOCKET_TRACE", "false").lower() == "true":
 
 # Host where ComfyUI is running
 COMFY_HOST = "127.0.0.1:8188"
+
+# Connection pooling for HTTP requests
+_session = requests.Session()
+_session.headers.update({"Content-Type": "application/json"})
+
+# Health check cache
+_comfy_healthy = False
+_comfy_health_check_timestamp = 0
+COMFY_HEALTH_CACHE_TTL_S = 5
 # Enforce a clean state after each job is done
 # see https://docs.runpod.io/docs/handler-additional-controls#refresh-worker
 REFRESH_WORKER = os.environ.get("REFRESH_WORKER", "false").lower() == "true"
@@ -59,13 +68,43 @@ REFRESH_WORKER = os.environ.get("REFRESH_WORKER", "false").lower() == "true"
 def _comfy_server_status():
     """Return a dictionary with basic reachability info for the ComfyUI HTTP server."""
     try:
-        resp = requests.get(f"http://{COMFY_HOST}/", timeout=5)
+        resp = _session.get(f"http://{COMFY_HOST}/", timeout=5)
         return {
             "reachable": resp.status_code == 200,
             "status_code": resp.status_code,
         }
     except Exception as exc:
         return {"reachable": False, "error": str(exc)}
+
+
+def _check_comfy_healthy(force=False):
+    """Check if ComfyUI is healthy with caching to avoid excessive requests."""
+    global _comfy_healthy, _comfy_health_check_timestamp
+
+    current_time = time.time()
+    if (
+        not force
+        and (current_time - _comfy_health_check_timestamp) < COMFY_HEALTH_CACHE_TTL_S
+    ):
+        return _comfy_healthy
+
+    status = _comfy_server_status()
+    _comfy_healthy = status.get("reachable", False)
+    _comfy_health_check_timestamp = current_time
+
+    if not _comfy_healthy:
+        logger.warning(
+            f"ComfyUI health check failed: {status.get('error', 'unreachable')}"
+        )
+
+    return _comfy_healthy
+
+
+def _invalidate_health_cache():
+    """Invalidate the health cache (call after ComfyUI restart)."""
+    global _comfy_healthy, _comfy_health_check_timestamp
+    _comfy_healthy = False
+    _comfy_health_check_timestamp = 0
 
 
 def _attempt_websocket_reconnect(ws_url, max_attempts, delay_s, initial_error):
@@ -204,7 +243,7 @@ def check_server(url, retries=500, delay=50):
     print(f"worker-comfyui - Checking API server at {url}...")
     for i in range(retries):
         try:
-            response = requests.get(url, timeout=5)
+            response = _session.get(url, timeout=5)
 
             # If the response status code is 200, the server is up and running
             if response.status_code == 200:
@@ -265,7 +304,7 @@ def upload_images(images):
             }
 
             # POST request to upload the image
-            response = requests.post(
+            response = _session.post(
                 f"http://{COMFY_HOST}/upload/image", files=files, timeout=30
             )
             response.raise_for_status()
@@ -316,7 +355,7 @@ def get_available_models():
         dict: Dictionary containing available models by type
     """
     try:
-        response = requests.get(f"http://{COMFY_HOST}/object_info", timeout=10)
+        response = _session.get(f"http://{COMFY_HOST}/object_info", timeout=10)
         response.raise_for_status()
         object_info = response.json()
 
@@ -367,7 +406,7 @@ def queue_workflow(workflow, client_id, comfy_org_api_key=None):
 
     # Use requests for consistency and timeout
     headers = {"Content-Type": "application/json"}
-    response = requests.post(
+    response = _session.post(
         f"http://{COMFY_HOST}/prompt", data=data, headers=headers, timeout=30
     )
 
@@ -463,7 +502,7 @@ def get_history(prompt_id):
         dict: The history of the prompt, containing all the processing steps and results
     """
     # Use requests for consistency and timeout
-    response = requests.get(f"http://{COMFY_HOST}/history/{prompt_id}", timeout=30)
+    response = _session.get(f"http://{COMFY_HOST}/history/{prompt_id}", timeout=30)
     response.raise_for_status()
     return response.json()
 
@@ -487,7 +526,7 @@ def get_image_data(filename, subfolder, image_type):
     url_values = urllib.parse.urlencode(data)
     try:
         # Use requests for consistency and timeout
-        response = requests.get(f"http://{COMFY_HOST}/view?{url_values}", timeout=60)
+        response = _session.get(f"http://{COMFY_HOST}/view?{url_values}", timeout=60)
         response.raise_for_status()
         print(f"worker-comfyui - Successfully fetched image data for {filename}")
         return response.content
@@ -533,14 +572,9 @@ def handler(job):
     input_images = validated_data.get("images")
 
     # Make sure that the ComfyUI HTTP API is available before proceeding
-    if not check_server(
-        f"http://{COMFY_HOST}/",
-        COMFY_API_AVAILABLE_MAX_RETRIES,
-        COMFY_API_AVAILABLE_INTERVAL_MS,
-    ):
-        return {
-            "error": f"ComfyUI server ({COMFY_HOST}) not reachable after multiple retries."
-        }
+    # Use force=True to get fresh status for each new job
+    if not _check_comfy_healthy(force=True):
+        return {"error": f"ComfyUI server ({COMFY_HOST}) not reachable."}
 
     # Upload input images if they exist
     if input_images:
@@ -638,6 +672,9 @@ def handler(job):
                         WEBSOCKET_RECONNECT_DELAY_S,
                         closed_err,
                     )
+
+                    # Invalidate health cache after reconnect to ensure fresh status
+                    _invalidate_health_cache()
 
                     print(
                         "worker-comfyui - Resuming message listening after successful reconnect."
